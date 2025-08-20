@@ -81,6 +81,7 @@ def genericSearch(problem, fronteira, strategy):
                 newState = (filhoNo, newCusto, newCaminho)
                 strategy(fronteira, newState, newCusto)
 
+
 def tinyMazeSearch(problem: SearchProblem) -> List[Directions]:
     """
     Returns a sequence of moves that solves tinyMaze.  For any other maze, the
@@ -140,15 +141,46 @@ def nullHeuristic(state, problem=None) -> float:
     """
     return 0
 
+# def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic) -> List[Directions]:
+#     """Search the node that has the lowest combined cost and heuristic first."""
+#     "*** YOUR CODE HERE ***"
+#     nosAtivos = util.PriorityQueue()
+
+#     def addNosAtivos(ativos, state, custo):
+#         ativos.push(state,  heuristic(state[0], problem) + custo)
+
+#     return genericSearch(problem, nosAtivos, addNosAtivos)
+
 def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic) -> List[Directions]:
     """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
     nosAtivos = util.PriorityQueue()
-
-    def addNosAtivos(ativos, state, custo):
-        ativos.push(state, custo + heuristic(state[1], problem))
-
-    return genericSearch(problem, nosAtivos, addNosAtivos)
+    best_costs = {}  # Melhor custo conhecido para cada estado
+    
+    estado_inicial = problem.getStartState()
+    nosAtivos.push((estado_inicial, [], 0), heuristic(estado_inicial, problem))
+    best_costs[estado_inicial] = 0
+    
+    while not nosAtivos.isEmpty():
+        no, caminho, custo = nosAtivos.pop()
+        
+        # Ignorar se encontramos um caminho melhor desde que este foi adicionado
+        if custo != best_costs.get(no, float('inf')):
+            continue
+            
+        if problem.isGoalState(no):
+            return caminho
+            
+        for filhoNo, filhoAction, filhoCusto in problem.getSuccessors(no):
+            newCusto = custo + filhoCusto
+            
+            # Só adicionar se for um caminho melhor
+            if filhoNo not in best_costs or newCusto < best_costs[filhoNo]:
+                best_costs[filhoNo] = newCusto
+                newCaminho = caminho + [filhoAction]
+                priority = newCusto + heuristic(filhoNo, problem)
+                nosAtivos.push((filhoNo, newCaminho, newCusto), priority)
+    
+    return []
 
 # Abbreviations
 bfs = breadthFirstSearch
