@@ -64,23 +64,48 @@ class SearchProblem:
         util.raiseNotDefined()
 
 
-def genericSearch(problem, fronteira, strategy):
-    """The generic search function"""
+def genericSearch(problem, fronteira, strategy)-> List[Directions]:
+    best_costs = {}
     nos_visited = set()
-    estado_inicial = (problem.getStartState(), 0, [])  
-    strategy(fronteira, estado_inicial, 0)
-    while not fronteira.isEmpty():
-        (no, custo, caminho) = fronteira.pop()
-        if problem.isGoalState(no):
-            return caminho
-        if not no in nos_visited:
-            nos_visited.add(no)
-            for filhoNo, filhoAction, filhoCusto in problem.getSuccessors(no):
-                newCusto = custo + filhoCusto
-                newCaminho = caminho + [filhoAction]
-                newState = (filhoNo, newCusto, newCaminho)
-                strategy(fronteira, newState, newCusto)
+    initial_state = (problem.getStartState(), [], 0)
+    strategy(fronteira, initial_state, 0, problem)
+    best_costs[problem.getStartState()] = 0
 
+    while not fronteira.isEmpty():
+        # (state, cost, path) = fronteira.pop()
+        state, path, cost = fronteira.pop()
+
+        # Verificar se ainda é o melhor caminho (para buscas de custo uniforme)
+        if hasattr(strategy, 'recheck') and strategy.recheck:
+            if cost != best_costs.get(state, float('inf')):
+                continue
+        
+        if problem.isGoalState(state):
+            return path
+        
+            
+            # Para buscas de custo uniforme, verificar se é melhor
+        if hasattr(strategy, 'recheck') and strategy.recheck:
+            for next_state, action, step_cost in problem.getSuccessors(state):
+                new_cost = cost + step_cost
+                new_path = path + [action]
+                new_state = (next_state, new_path, new_cost)
+
+                if next_state not in best_costs or new_cost < best_costs[next_state]:
+                    best_costs[next_state] = new_cost
+                    strategy(fronteira, new_state, new_cost, problem)
+        else:
+            # Para DFS/BFS, simplesmente adicionar se não visitado
+            if not state in nos_visited:
+                nos_visited.add(state)
+                for filhoNo, filhoAction, filhoCusto in problem.getSuccessors(state):
+                    newCusto = cost + filhoCusto
+                    newCaminho = path + [filhoAction]
+                    newState = (filhoNo, newCaminho, newCusto)
+                    strategy(fronteira, newState, newCusto, problem)
+
+    return []
+    
 
 def tinyMazeSearch(problem: SearchProblem) -> List[Directions]:
     """
@@ -109,30 +134,36 @@ def depthFirstSearch(problem: SearchProblem) -> List[Directions]:
 
     nosAtivos = util.Stack()
 
-    def addNosAtivos(ativos, state, custo):
-        ativos.push(state)
+    def estragegiaProfundidade(frontier, state, cost, problem):
+        frontier.push(state)
 
-    return genericSearch(problem, nosAtivos, addNosAtivos)
+    estragegiaProfundidade.recheck = False
+
+    return genericSearch(problem, nosAtivos, estragegiaProfundidade)
 
 def breadthFirstSearch(problem: SearchProblem) -> List[Directions]:
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
     nosAtivos = util.Queue()
 
-    def addNosAtivos(ativos, state, custo):
-        ativos.push(state)
+    def estrategiaLargura(frontier, state, cost, problem):
+        frontier.push(state)
 
-    return genericSearch(problem, nosAtivos, addNosAtivos)
+    estrategiaLargura.recheck = False
+
+    return genericSearch(problem, nosAtivos, estrategiaLargura)
 
 def uniformCostSearch(problem: SearchProblem) -> List[Directions]:
     """Search the node of least total cost first."""
     "*** YOUR CODE HERE ***"
     nosAtivos = util.PriorityQueue()
 
-    def addNosAtivos(ativos, state, custo):
-        ativos.push(state, custo)
+    def estrategiaUCS(frontier, state, cost, problem):
+        frontier.push(state, cost)
 
-    return genericSearch(problem, nosAtivos, addNosAtivos)
+    estrategiaUCS.recheck = True
+
+    return genericSearch(problem, nosAtivos, estrategiaUCS)
 
 def nullHeuristic(state, problem=None) -> float:
     """
@@ -141,46 +172,18 @@ def nullHeuristic(state, problem=None) -> float:
     """
     return 0
 
-# def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic) -> List[Directions]:
-#     """Search the node that has the lowest combined cost and heuristic first."""
-#     "*** YOUR CODE HERE ***"
-#     nosAtivos = util.PriorityQueue()
-
-#     def addNosAtivos(ativos, state, custo):
-#         ativos.push(state,  heuristic(state[0], problem) + custo)
-
-#     return genericSearch(problem, nosAtivos, addNosAtivos)
-
 def aStarSearch(problem: SearchProblem, heuristic=nullHeuristic) -> List[Directions]:
     """Search the node that has the lowest combined cost and heuristic first."""
     nosAtivos = util.PriorityQueue()
-    best_costs = {}  # Melhor custo conhecido para cada estado
-    
-    estado_inicial = problem.getStartState()
-    nosAtivos.push((estado_inicial, [], 0), heuristic(estado_inicial, problem))
-    best_costs[estado_inicial] = 0
-    
-    while not nosAtivos.isEmpty():
-        no, caminho, custo = nosAtivos.pop()
-        
-        # Ignorar se encontramos um caminho melhor desde que este foi adicionado
-        if custo != best_costs.get(no, float('inf')):
-            continue
-            
-        if problem.isGoalState(no):
-            return caminho
-            
-        for filhoNo, filhoAction, filhoCusto in problem.getSuccessors(no):
-            newCusto = custo + filhoCusto
-            
-            # Só adicionar se for um caminho melhor
-            if filhoNo not in best_costs or newCusto < best_costs[filhoNo]:
-                best_costs[filhoNo] = newCusto
-                newCaminho = caminho + [filhoAction]
-                priority = newCusto + heuristic(filhoNo, problem)
-                nosAtivos.push((filhoNo, newCaminho, newCusto), priority)
-    
-    return []
+
+    def estrategiaA(frontier, state, cost, problem):
+        state_pos, path, actual_cost = state
+        priority = actual_cost + heuristic(state_pos, problem)
+        frontier.push(state, priority)
+
+    estrategiaA.recheck = True
+
+    return genericSearch(problem, nosAtivos, estrategiaA)
 
 # Abbreviations
 bfs = breadthFirstSearch
