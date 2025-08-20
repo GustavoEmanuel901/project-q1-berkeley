@@ -486,11 +486,7 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
         # distance = util.manhattanDistance(position, food_position)cd
         if heuristic < distance:
             heuristic = distance
-    "*** YOUR CODE HERE ***"
     return heuristic
-
-
-
 
 
 class ClosestDotSearchAgent(SearchAgent):
